@@ -24,20 +24,30 @@ factors = unique_length <= 5
 #coltypes = data_known.columns.to_series().groupby(data_known.dtypes).groups
 # converting variables with less that five unique values to str
 data_known[data_known.columns[factors]] = data_known[data_known.columns[factors]].astype(str)
-
+qualind = np.where(data_known.dtypes == 'object')[0]
+quanind = np.where(data_known.dtypes == 'float64')[0]
 
 
 # quantitative variables
-coltypes = data_known.columns.to_series().groupby(data_known.dtypes).groups
 
-known_quan = data_known[data_known.columns[data_known.dtypes == 'float64']]
+known_quan = data_known.iloc[:,quanind]
 # seperating qulitative variables
-known_qual = data_known[data_known.columns[data_known.dtypes == 'object']]
+known_qual = data_known.iloc[:,qualind]
 
-# dwvwloping model to fill NA
-nafill <- preProcess(known_quan, method = "medianImpute")
-# filling th NA
-known_quan <- predict(nafill, known_quan)
+import sklearn.preprocessing as pp
 
 # getting correlation between variables
-corMatrix <- cor(known_quan)
+# corMatrix <- cor(known_quan)
+label_ec = pp.LabelEncoder()
+for i in qualind:
+    data_known.iloc[:,i] = label_ec.fit_transform(data_known.iloc[:,i])
+ 
+## imputng nan
+imr = pp.Imputer(strategy = "median")
+imr.fit(data_known)
+data_known_pre = imr.transform(data_known)
+
+
+
+ohe = pp.OneHotEncoder(categorical_features= qualind, sparse=False)
+data_known_pre = ohe.fit_transform(data_known_pre)
