@@ -27,6 +27,7 @@ data_known[data_known.columns[factors]] = data_known[data_known.columns[factors]
 qualind = np.where(data_known.dtypes == 'object')[0]
 quanind = np.where(data_known.dtypes == 'float64')[0]
 
+data_known_dummy = pd.get_dummies(data_known)
 
 # quantitative variables
 
