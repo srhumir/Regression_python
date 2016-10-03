@@ -56,4 +56,21 @@ X_val, X_test, target_val, target_test = \
 
 # standardization
 std = pp.StandardScaler()
-X_train_std = std.fit_transform
+X_train_std = std.fit_transform(X_train)
+X_val_std = std.transform(X_val)
+X_test_std = std.transform(X_test)
+
+## Feature selection
+import sklearn.ensemble as en
+feat_lables = data_known_dummy.columns
+rf = en.RandomForestRegressor(n_estimators=500,
+...                           random_state=0,
+...                           n_jobs=-2)
+rf.fit(X_train, target_train)
+imps = rf.feature_importances_
+indices = np.argsort(imps)[::-1]
+for f in range(X_train.shape[1]):
+    print("%2d) %-*s %f" % (f + 1, 30,feat_lables[f],imps[indices[f]]))
+
+
+    print(str(f+1) + ')'+ str(feat_lables[f]) +'     '+ str(imps[indices[f]]))
