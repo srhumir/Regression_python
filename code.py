@@ -27,6 +27,7 @@ data_known[data_known.columns[factors]] = data_known[data_known.columns[factors]
 qualind = np.where(data_known.dtypes == 'object')[0]
 quanind = np.where(data_known.dtypes == 'float64')[0]
 
+# define dummy variables
 data_known_dummy = pd.get_dummies(data_known)
 
 # quantitative variables
@@ -39,16 +40,20 @@ import sklearn.preprocessing as pp
 
 # getting correlation between variables
 # corMatrix <- cor(known_quan)
-label_ec = pp.LabelEncoder()
-for i in qualind:
-    data_known.iloc[:,i] = label_ec.fit_transform(data_known.iloc[:,i])
  
 ## imputng nan
 imr = pp.Imputer(strategy = "median")
-imr.fit(data_known)
-data_known_pre = imr.transform(data_known)
+imr.fit(data_known_dummy)
+data_known_pre = imr.transform(data_known_dummy)
 
+# divide into train, validation ad test
+import sklearn.cross_validation as cv
+X_train, X_test, target_train, target_test = \
+... cv.train_test_split(data_known_pre, target, test_size = .3, random_state=0)
 
+X_val, X_test, target_val, target_test = \
+... cv.train_test_split(X_test, target_test, test_size=.5, random_state=100)
 
-ohe = pp.OneHotEncoder(categorical_features= qualind, sparse=False)
-data_known_pre = ohe.fit_transform(data_known_pre)
+# standardization
+std = pp.StandardScaler()
+X_train_std = std.fit_transform
