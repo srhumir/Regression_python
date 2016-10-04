@@ -11,6 +11,7 @@ urllib.request.urlretrieve(url, "dataset.zip")
 import zipfile as zip
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 file = zip.ZipFile('dataset.zip')
 file.namelist()
 file.extractall()
@@ -35,13 +36,45 @@ data_known_dummy = pd.get_dummies(data_known)
 known_quan = data_known.iloc[:,quanind]
 # seperating qulitative variables
 known_qual = data_known.iloc[:,qualind]
+## exploratory analysis
+cormatrix = known_quan.corr()
+# maximum correlation
+round(np.max(np.extract(1-np.eye(cormatrix.shape[0]),cormatrix)),2)
+# correlation with target
+corrs = [known_quan.iloc[:,[i]].assign(target=target).corr().iloc[0,1] \
+...     for i in range(0,known_quan.shape[1])]
+corrssort = np.argsort(corrs)[::-1]
+most_cor = known_quan.columns[corrssort[:4]]
+# plot
+## quantative variables
+plt.figure()
+for i in range(0,most_cor.size):
+    plt.subplot(221+i)
+    plt.scatter(known_quan[most_cor[i]], target)
+    plt.title(most_cor[i])
+plt.suptitle('Realtionship between quantitative variables and the target')
+plt.show()
+## qualitative variables
+mean_target =[target.groupby(known_qual.iloc[:,i]).mean() 
+    for i in range(0,known_qual.shape[1])]
+tan_target = [abs(mean_target[i][-1]-mean_target[i][0])/len(mean_target[i])  
+    for i in range(0, len(mean_target))]
+tansort = np.argsort(tan_target)[::-1]
+most_tan = known_qual.columns[tansort[:4]]
+
+a =known_qual[most_tan].assign(target=target)
+fig, axes = plt.subplots(figsize=(10,  10), nrows=1, ncols=a.shape[1]-1)
+for i in range(0, a.shape[1]-1):
+    a.boxplot(column='target', by = most_tan[i], 
+              meanline=True, showmeans=True, showcaps=True, 
+              showbox=True, showfliers=False, 
+              ax=axes[i])
+plt.suptitle('Realtionship between qualitative variables and the target')
+plt.show()
 
 import sklearn.preprocessing as pp
 import math
 
-# getting correlation between variables
-# corMatrix <- cor(known_quan)
- 
 ## imputng nan
 imr = pp.Imputer(strategy = "median")
 imr.fit(data_known_dummy)
@@ -61,6 +94,7 @@ X_train_std = std.fit_transform(X_train)
 X_val_std = std.transform(X_val)
 X_test_std = std.transform(X_test)
 
+
 ## Feature selection
 import sklearn.ensemble as en
 import sklearn.pipeline as pip
@@ -70,7 +104,7 @@ rf_pip = pip.Pipeline([('std', pp.StandardScaler()),
                                                 n_jobs=-2))])
 feat_lables = data_known_dummy.columns
 
-rf = en.RandomForestRegressor(n_estimators=500,
+rf = en.RandomForestRegressor(n_estimators=200,
 ...                           random_state=0,
 ...                           n_jobs=-2)
 rf.fit(X_train_std, target_train)
@@ -82,10 +116,10 @@ for f in range(X_train_std.shape[1]):
     print("%2d) %-*s %f %g" % (f + 1, 30,feat_lables[indices[f]],imps[indices[f]], cumsum[f]))
 
 def RMSE(prediction, reference):
-    SME = (prediction - reference).apply(np.square).sum()/prediction.size
-    RSME = math.sqrt(SME)
+    MSE = (prediction - reference).apply(np.square).sum()/prediction.size
+    RMSE = math.sqrt(MSE)
     # ME <- sum(abs(prediction-reference))/length(prediction)
-    return(RSME)
+    return(RMSE)
 # threshod to choose cummulative importance
 threshold = .79
 thress = np.array(range(73,99))/100
@@ -103,11 +137,10 @@ for threshold in thress:
     print("Train RMSE: " + str(train_err[-1]))
     print ("Validation RMSE: " + str(val_err[-1]))
 
-import matplotlib.pyplot as plt
-plt.plot(thress, train_err,
+plt.plot(number_vars, train_err,
          color='blue', marker='o',
          label='Training error')
-plt.plot(thress, val_err,
+plt.plot(number_vars, val_err,
          color='green', marker='s',
          label='Validation error')
 plt.grid()
@@ -115,6 +148,14 @@ plt.xlabel('Number of vraibles in the model')
 plt.ylabel('Root mean square erro')
 plt.legend(loc=7)
 plt.show()
+#choose the best model
+thres = thress[np.where(val_err == np.min(val_err))[0][-1]]
+choose = np.where(cumsum >= threshold)[0][0]
+impvars = indices[:choose]
+rf.fit(X_train_std[:, impvars], target_train)
+#residual plot
+resids = rf.predict(X_train_std[:, impvars])- target_train
+plt.scatter(rf.predict(X_train_std[:, impvars]), resids)
 
 
 plt.hist(target)
